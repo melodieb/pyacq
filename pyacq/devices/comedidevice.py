@@ -21,7 +21,10 @@ except ImportError:
     HAVE_PYCOMEDI = False
 
 
-
+#TODO gain/offest by channel or global
+#TODO work on blobal params an by_channel_params
+#TODO channel_indexes, self.ai_channel_ranges,
+#TODO digital device
 
 class ComediDevice(Node):
     """
@@ -65,41 +68,19 @@ class ComediDevice(Node):
         self.dev = Device(self.device_path)
         self.dev.open()
         #TODO channel_indexes, self.ai_channel_ranges,
-        self.ai_subdevice,  ai_channels, internal_size = prepare_device(dev, channel_indexes, self.ai_channel_ranges,  self.sampling_rate)
+        self.ai_subdevice,  ai_channels, internal_size = prepare_device(self.dev, channel_indexes, self.ai_channel_ranges,  self.sampling_rate)
 
         self.head = 0
         self.timer = QtCore.QTimer(singleShot = False, interval = 100)
         self.timer.timeout.connect(self.periodic_poll)
-        
-        
-
-        #~ try:
-            #~ dev.parse_calibration()
-            #~ for chan in ai_channels:
-                #~ print chan.index, chan.range, chan.get_converter()
-            #~ converters = [c.get_converter() for c in ai_channels]
-            #~ print 'with comedi calibrate'
-        #~ except PyComediError as e:
-        #~ if 1:
-            # if comedi calibrate not work we put manual pylynom
-            #~ converters = [ ]
-            #~ for chan in ai_channels:
-                #~ phys_range = float(chan.range.max - chan.range.min)
-                #~ logic_range = np.iinfo(dt).max-np.iinfo(dt).min
-                #~ conv = CalibratedConverter(to_physical_coefficients=[-phys_range/logic_range*2., phys_range/logic_range,0.,0.],
-                                            #~ to_physical_expansion_origin=logic_range//2-1,
-                                            #~ )
-               #~ converters.append(conv)
-            #~ print 'manual callibration with linear polynom'
 
 
     def _start(self):
+        self.last_index = 0
         self.ai_buffer = np.memmap(dev.file, dtype = dt, mode = 'r', shape = (self.internal_size, self.nb_ai_channel))
         self.timer.start()
         self.ai_subdevice.command()
         
-        pass
-
     def _stop(self):
         self.timer.stop()
         self.ai_subdevice.cancel()
@@ -178,7 +159,7 @@ class ComediDevice(Node):
         remaining_bytes = new_bytes%(nb_ai_channel*itemsize)
         new_bytes = new_bytes - remaining_bytes
         
-        index = (last_index + new_bytes//nb_ai_channel//itemsize)%internal_size
+        index = (self.last_index + new_bytes//nb_ai_channel//itemsize)%internal_size
         
         if index == last_index :
             return
@@ -187,32 +168,13 @@ class ComediDevice(Node):
             new_samp = self.internal_size - last_index
             self.head += new_samp
             self.outputs['signals'].send(self.head, self.ai_buffer[ last_index:internal_size, : ])
-            
-            #~ new_samp2 = min(new_samp, arr_ad.shape[1]-(pos+half_size))
-            #~ for i,c in enumerate(converters):
-                #~ arr_ad[i,pos:pos+new_samp] = c.to_physical(ai_buffer[ last_index:internal_size, i ])
-                #~ arr_ad[i,pos+half_size:pos+new_samp2+half_size] = arr_ad[i,pos:pos+new_samp2]
-            
             last_index = 0
-            #~ abs_pos += int(new_samp)
-            #~ pos = abs_pos%half_size
 
         new_samp = index - last_index
-        #~ new_samp2 = min(new_samp, arr_ad.shape[1]-(pos+half_size))
         self.head += new_samp
         self.outputs['signals'].send(self.head, self.ai_buffer[ last_index:index, :])
         
-        
-        #Analog
-        #~ for i,c in enumerate(converters):
-            #~ arr_ad[i,pos:pos+new_samp] = c.to_physical(ai_buffer[ last_index:index, i ])
-            #~ arr_ad[i,pos+half_size:pos+new_samp2+half_size] = arr_ad[i,pos:pos+new_samp2]
-        
-        #~ abs_pos += int(new_samp)
-        #~ pos = abs_pos%half_size
-        #~ last_index = index%internal_size
-        
-        #~ socketAD.send(msgpack.dumps(abs_pos))
+        self.last_index = index%self.internal_size
         
         ai_subdevice.mark_buffer_read(new_bytes)
 
