@@ -49,7 +49,7 @@ class ComediDevice(Node):
         self.sampling_rate= sampling_rate
         if subdevices_params is None:
             # scan_device_info give the default params
-            subdevices_params = self.scan_device_info(device_path)
+            subdevices_params = self.scan_device_info(device_path)['subdevices']
         self.subdevices_params = subdevices_params
         
         # open/prepare/close the device to get the real sampling_rate!!!
@@ -175,18 +175,19 @@ class ComediDevice(Node):
         
         index = (self.last_index + new_bytes//nb_ai_channel//itemsize)%internal_size
         
-        if index == last_index :
+        if index == self.last_index :
             return
         
-        if index< last_index:
-            new_samp = self.internal_size - last_index
+        if index< self.last_index:
+            #end of internal ring
+            new_samp = self.internal_size - self.last_index
             self.head += new_samp
-            self.outputs['signals'].send(self.head, self.ai_buffer[ last_index:internal_size, : ])
-            last_index = 0
+            self.outputs['signals'].send(self.head, self.ai_buffer[ self.last_index:internal_size, : ])
+            self.last_index = 0
 
-        new_samp = index - last_index
+        new_samp = index - self.last_index
         self.head += new_samp
-        self.outputs['signals'].send(self.head, self.ai_buffer[ last_index:index, :])
+        self.outputs['signals'].send(self.head, self.ai_buffer[ self.last_index:index, :])
         
         self.last_index = index%self.internal_size
         
