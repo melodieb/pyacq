@@ -454,7 +454,11 @@ class MeasurementComputingMultiSignals(DeviceBase):
                 self.nb_ai_channel = int(np.sum(sel))
                 channel_indexes = [e   for e, s in zip(sub['by_channel_params']['channel_indexes'], sel) if s]
                 channel_names = [e  for e, s in zip(sub['by_channel_params']['channel_names'], sel) if s]
-                self.packet_size = int(info['device_packet_size']/self.nb_ai_channel)
+                if self.nb_ai_channel>0:
+                    self.packet_size = int(info['device_packet_size']/self.nb_ai_channel)
+                else:
+                    self.packet_size = int(info['device_packet_size'])
+                
         
                 l = int(self.sampling_rate*self.buffer_length)
                 self.buffer_length = (l - l%self.packet_size)/self.sampling_rate
