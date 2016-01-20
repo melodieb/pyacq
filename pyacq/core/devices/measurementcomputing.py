@@ -274,7 +274,7 @@ def device_mainLoop(stop_flag, streams, board_num, ul_dig_ports, device_info ):
         #~ time.sleep(packet_size/sampling_rate)
         #~ print t2-t1, max(packet_size/sampling_rate-(t2-t1) , 0) , packet_size/sampling_rate
         #~ print 'sleep', packet_size/sampling_rate-(t2-t1), packet_size/sampling_rate, t2-t1
-        time.sleep(max(packet_size/sampling_rate-(t2-t1), 0))
+        time.sleep(max(packet_size/sampling_rate-(t2-t1), 0.02))
         #~ print 'half sleep'
         
     try:
