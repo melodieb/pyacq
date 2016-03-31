@@ -125,6 +125,11 @@ class RawDataRecording:
             pos_stop = None
         
         while self.running:
+            events = socket.poll(50)
+            if events ==0:
+                time.sleep(.05)
+                continue
+            
             message = socket.recv()
             pos = msgpack.loads(message)
             if last_pos is None:
